@@ -272,6 +272,25 @@ def test_ignore(tmpdir):
     assert cs.main('--skip=*ignoredir/bad*', d) == 1
 
 
+def test_ignore_files_list(tmpdir):
+    """Test ignoring when given an explicit list of files."""
+    d = str(tmpdir)
+    with open(op.join(d, 'good.txt'), 'w') as f:
+        f.write('this file is okay')
+    with open(op.join(d, 'bad.txt'), 'w') as f:
+        f.write('abandonned')
+
+    assert cs.main('--skip=bad.txt', op.join(d, "bad.txt")) == 0
+
+    # This is equivalent to "codespell --skip=bad.txt d/*.txt"
+    # due to glob expansion
+    assert cs.main(
+        '--skip=bad.txt',
+        op.join(d, "bad.txt"),
+        op.join(d, "good.txt")
+    ) == 0
+
+
 def test_check_filename(tmpdir):
     """Test filename check."""
     d = str(tmpdir)
