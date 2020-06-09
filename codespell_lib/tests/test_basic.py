@@ -250,6 +250,17 @@ def test_encoding(tmpdir, capsys):
         os.remove(f.name)
 
 
+@pytest.fixture
+def skip_dir(tmpdir):
+    d = str(tmpdir)
+    def write_file(filename, text):
+        with open(op.join(d, filename), "w") as f:
+            f.write(text)
+    write_file("good.txt", "this file is ok\n")
+    write_file("bad.txt", "thos file is bad\n")
+    yield d
+
+
 def test_ignore(tmpdir):
     """Test ignoring of files and directories."""
     d = str(tmpdir)
@@ -272,23 +283,22 @@ def test_ignore(tmpdir):
     assert cs.main('--skip=*ignoredir/bad*', d) == 1
 
 
-def test_ignore_files_list(tmpdir):
-    """Test ignoring when given an explicit list of files."""
-    d = str(tmpdir)
-    with open(op.join(d, 'good.txt'), 'w') as f:
-        f.write('this file is okay')
-    with open(op.join(d, 'bad.txt'), 'w') as f:
-        f.write('abandonned')
+def test_skip_trivial(skip_dir):
+    assert cs.main("--skip=bad.txt", skip_dir) == 0
 
-    assert cs.main('--skip=bad.txt', op.join(d, "bad.txt")) == 0
 
-    # This is equivalent to "codespell --skip=bad.txt d/*.txt"
-    # due to glob expansion
-    assert cs.main(
-        '--skip=bad.txt',
-        op.join(d, "bad.txt"),
-        op.join(d, "good.txt")
-    ) == 0
+@pytest.mark.parametrize(
+    ("input", "expected"),
+    (
+        (["--skip=bad.txt", "bad.txt"], 0),
+        (["--skip=bad.txt", "good.txt", "bad.txt"], 0),
+        (["--skip=*.txt", "bad.txt"], 0),
+        (["--skip=foo.bar,*.txt", "bad.txt"], 0),
+    ),
+)
+def test_skip_files(skip_dir, input, expected):
+    input[1:] = [op.join(skip_dir, x) for x in input[1:]]
+    assert cs.main(*input) == expected
 
 
 def test_check_filename(tmpdir):
